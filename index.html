@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#173b2b"><title>The Days Board</title>
+<link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg">
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#111914;color:#f1f0df;font-family:Georgia,serif}
+.frame{width:min(100%,620px);padding:12px;border:8px solid #805536;border-radius:12px;background:#684326;box-shadow:0 18px 50px #0009}
+.board{min-height:600px;padding:28px 14px;background:radial-gradient(#ffffff08,transparent),repeating-linear-gradient(4deg,#1c422f 0,#1c422f 4px,#193b2a 5px,#193b2a 8px);display:flex;align-items:center;flex-direction:column;text-align:center}
+h1{font-size:clamp(2rem,8vw,3rem);font-weight:normal;margin:0 0 8px}.sub{margin-bottom:25px;color:#d2d8c9}
+#tallies{min-height:230px;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:13px;max-width:100%}
+.group{width:66px;height:43px;position:relative;flex:0 0 66px}.mark{position:absolute;top:4px;height:33px;width:3px;background:#f1f0df;border-radius:3px}.mark:nth-child(1){left:3px}.mark:nth-child(2){left:16px}.mark:nth-child(3){left:29px}.mark:nth-child(4){left:42px}.slash{position:absolute;left:0;top:20px;width:57px;height:3px;background:#f1f0df;transform:rotate(-23deg)}
+#count{margin:10px 0 18px;color:#e7e6d8}button{padding:12px 17px;border:1px solid #d5d2bd;border-radius:5px;background:#284b37;color:white;font:1rem Georgia;cursor:pointer}button:disabled{opacity:.6}
+#status{min-height:24px;font: .9rem system-ui;color:#d7dece}.divider{width:75%;border:0;border-top:1px solid #d7dece66;margin:20px 0}
+.since{font-size:1.1rem;line-height:1.6}.since strong{display:block;font-size:2rem;font-weight:normal}
+.account{margin-top:auto;padding-top:25px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.account button{font-size:.85rem}
+.small{font: .78rem system-ui;color:#c8d0c2;margin-top:10px;max-width:440px}
+</style></head><body><main class="frame"><section class="board">
+<h1>The Days Board</h1><div class="sub">one day at a time</div>
+<div id="tallies"></div><div id="count">602 days counted</div>
+<button id="checkin">Add today's tally</button><p id="status" role="status">Your board is saved on this device.</p>
+<hr class="divider"><p class="since"><strong id="sinceCount">602</strong> days have passed since you last saw her</p>
+<div class="account"><button id="signin">Sign in with Google to sync</button><button id="signout" hidden>Sign out</button></div>
+<div id="accountStatus" class="small">Not signed in · this device only</div>
+<div class="small">Use the same Google account on each device to sync your board.</div>
+</section></main>
+<script>
+(()=> {
+const START=602, BOARD="SRYSS", KEY="daysBoardState_v1", $=id=>document.getElementById(id);
+const today=()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+const dayNo=s=>Math.floor(new Date(s+"T00:00:00").getTime()/86400000);
+let state;try{state=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+if(!state||!Array.isArray(state.checkInDates)||!state.installedOn)state={installedOn:today(),checkInDates:[]};
+const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+const uniq=a=>[...new Set(a)].sort(); let fb=null,user=null;
+function render(){
+ const total=START+state.checkInDates.length;$("count").textContent=total+" days counted";
+ $("sinceCount").textContent=START+Math.floor(Math.max(0,dayNo(today())-dayNo(state.installedOn))/2);
+ let n=Math.min(Math.ceil(total/5),30),box=$("tallies");box.replaceChildren();
+ for(let i=0;i<n;i++){let g=document.createElement("span");g.className="group";for(let j=0;j<4;j++){let m=document.createElement("i");m.className="mark";g.append(m)}let s=document.createElement("i");s.className="slash";g.append(s);box.append(g)}
+ if(Math.ceil(total/5)>30){let more=document.createElement("span");more.textContent="+"+(Math.ceil(total/5)-30)+" more groups";box.append(more)}
+ let done=state.checkInDates.includes(today());$("checkin").disabled=done;$("checkin").textContent=done?"Today's tally is added":"Add today's tally";
+}
+const setStatus=s=>$("status").textContent=s;
+async function sync(){
+ if(!fb||!user)return;
+ const ref=fb.doc(fb.db,"boards",BOARD,"users",user.uid);
+ await fb.runTransaction(fb.db,async tx=>{const snap=await tx.get(ref),cloud=snap.exists()?snap.data():{};
+ const dates=uniq([...(cloud.checkInDates||[]),...state.checkInDates]);
+ state.installedOn=cloud.installedOn||state.installedOn;state.checkInDates=dates;
+ tx.set(ref,{installedOn:state.installedOn,checkInDates:dates,updatedAt:new Date().toISOString()},{merge:true});});
+ save();render();
+}
+$("checkin").onclick=async()=>{let d=today();if(state.checkInDates.includes(d))return;state.checkInDates=uniq([...state.checkInDates,d]);save();render();setStatus("Saved on this device.");if(fb&&user){try{await sync();setStatus("Today's tally is saved and synced.")}catch(e){setStatus("Saved here. Cloud sync will retry when online.")}}};
+async function init(){
+ try{
+ const [a,au,db]=await Promise.all([
+ import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+ import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js"),
+ import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")]);
+ const config={apiKey:"AIzaSyDj8pRJxpTnCzUWfJY5rBiCShx6oQJ9Pg",authDomain:"these-many-days-passed.firebaseapp.com",projectId:"these-many-days-passed",storageBucket:"these-many-days-passed.firebasestorage.app",messagingSenderId:"1010058296560",appId:"1:1010058296560:web:c28068f73902cc74df1635",measurementId:"G-JBFZ44ET0P"};
+ const app=a.initializeApp(config),auth=au.getAuth(app),firestore=db.getFirestore(app);
+ fb={...au,...db,auth,db:firestore};
+ au.onAuthStateChanged(auth,async u=>{user=u;$("signin").hidden=!!u;$("signout").hidden=!u;
+ if(u){$("accountStatus").textContent="Signed in as "+(u.email||"Google account")+" · board "+BOARD;try{await sync();setStatus("Your board is synced.")}catch(e){setStatus("Signed in, but sync failed. Check connection and Firestore rules.")}}
+ else $("accountStatus").textContent="Not signed in · this device only"});
+ await au.getRedirectResult(auth);
+ }catch(e){console.warn(e);$("accountStatus").textContent="Cloud sign-in needs internet and an authorized HTTPS website."}
+}
+$("signin").onclick=async()=>{if(!fb){setStatus("Cloud sign-in is still loading, or internet is unavailable.");return}try{await fb.signInWithRedirect(fb.auth,new fb.GoogleAuthProvider())}catch(e){setStatus("Google sign-in couldn't start. Check Firebase Authorized domains.")}};
+$("signout").onclick=async()=>{if(fb)await fb.signOut(fb.auth)};
+render();save();init();
+addEventListener("online",()=>{if(fb&&user)sync().then(()=>setStatus("Your board is synced.")).catch(()=>{})});
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
+})();
+</script></body></html>
