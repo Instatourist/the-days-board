@@ -53,19 +53,59 @@ async function sync(){
 }
 $("checkin").onclick=async()=>{let d=today();if(state.checkInDates.includes(d))return;state.checkInDates=uniq([...state.checkInDates,d]);save();render();setStatus("Saved on this device.");if(fb&&user){try{await sync();setStatus("Today's tally is saved and synced.")}catch(e){setStatus("Saved here. Cloud sync will retry when online.")}}};
 async function init(){
- try{
- const [a,au,db]=await Promise.all([
- import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
- import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js"),
- import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")]);
- const config={apiKey:"AIzaSyDj8pRJxpTnCzUWfJY5rBiCShx6oQJ9Pg",authDomain:"these-many-days-passed.firebaseapp.com",projectId:"these-many-days-passed",storageBucket:"these-many-days-passed.firebasestorage.app",messagingSenderId:"1010058296560",appId:"1:1010058296560:web:6d78c0429a8131bfdf1635",measurementId:"G-Q3QCBJRM1Q"};
- const app=a.initializeApp(config),auth=au.getAuth(app),firestore=db.getFirestore(app);
- fb={...au,...db,auth,db:firestore};
- au.onAuthStateChanged(auth,async u=>{user=u;$("signin").hidden=!!u;$("signout").hidden=!u;
- if(u){$("accountStatus").textContent="Signed in as "+(u.email||"Google account")+" · board "+BOARD;try{await sync();setStatus("Your board is synced.")}catch(e){setStatus("Signed in, but sync failed. Check connection and Firestore rules.")}}
- else $("accountStatus").textContent="Not signed in · this device only"});
- await au.getRedirectResult(auth);
- }catch(e){console.warn("Firebase initialization/redirect error:",e);$("accountStatus").textContent="Firebase error: "+(e.code||e.message||"unknown error");}
+  try {
+    $("accountStatus").textContent = "Step 1: Loading Firebase modules...";
+    const [a, au, db] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")
+    ]);
+
+    $("accountStatus").textContent = "Step 2: Initializing Firebase...";
+    const config = {
+      apiKey: "AIzaSyDj8pRJxpTnCzUWfJY5rBiCShx6oQJ9Pg",
+      authDomain: "these-many-days-passed.firebaseapp.com",
+      projectId: "these-many-days-passed",
+      storageBucket: "these-many-days-passed.firebasestorage.app",
+      messagingSenderId: "1010058296560",
+      appId: "1:1010058296560:web:6d78c0429a8131bfdf1635",
+      measurementId: "G-Q3QCBJRM1Q"
+    };
+
+    const app = a.initializeApp(config);
+    const auth = au.getAuth(app);
+    const firestore = db.getFirestore(app);
+    fb = {...au, ...db, auth, db: firestore};
+
+    $("accountStatus").textContent = "Step 3: Firebase initialized. Checking sign-in...";
+    au.onAuthStateChanged(auth, async u => {
+      user = u;
+      $("signin").hidden = !!u;
+      $("signout").hidden = !u;
+      if (u) {
+        $("accountStatus").textContent = "Signed in as " + (u.email || "Google account") + " · board " + BOARD;
+        try {
+          await sync();
+          setStatus("Your board is synced.");
+        } catch(e) {
+          setStatus("Sync failed: " + (e.code || e.message));
+        }
+      } else {
+        $("accountStatus").textContent = "Firebase ready. Not signed in.";
+      }
+    });
+
+    $("accountStatus").textContent = "Step 4: Checking redirect result...";
+    try {
+      await au.getRedirectResult(auth);
+      $("accountStatus").textContent = "Firebase ready. Not signed in.";
+    } catch(e) {
+      $("accountStatus").textContent = "REDIRECT ERROR: " + (e.code || e.message);
+    }
+  } catch(e) {
+    console.warn("Firebase diagnostic error:", e);
+    $("accountStatus").textContent = "INITIALIZATION ERROR: " + (e.code || e.message || "unknown");
+  }
 }
 $("signin").onclick=async()=>{if(!fb){setStatus("Cloud sign-in is still loading, or internet is unavailable.");return}try{await fb.signInWithRedirect(fb.auth,new fb.GoogleAuthProvider())}catch(e){console.warn("Google sign-in error:",e);setStatus("Google sign-in error: "+(e.code||e.message||"unknown error"))}};
 $("signout").onclick=async()=>{if(fb)await fb.signOut(fb.auth)};
