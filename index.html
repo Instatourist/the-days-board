@@ -26,7 +26,7 @@ h1{font-size:clamp(2rem,8vw,3rem);font-weight:normal;margin:0 0 8px}.sub{margin-
 </section></main>
 <script>
 (()=> {
-const START=602, BOARD="SRYSS", KEY="daysBoardState_v1", $=id=>document.getElementById(id);
+const START=602, BENCHMARK="2025-03-10", BOARD="SRYSS", KEY="daysBoardState_v1", $=id=>document.getElementById(id);
 const today=()=>{let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 const dayNo=s=>Math.floor(new Date(s+"T00:00:00").getTime()/86400000);
 let state;try{state=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
@@ -35,7 +35,7 @@ const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
 const uniq=a=>[...new Set(a)].sort(); let fb=null,user=null;
 function render(){
  const total=START+state.checkInDates.length;$("count").textContent=total+" days counted";
- $("sinceCount").textContent=START+Math.floor(Math.max(0,dayNo(today())-dayNo(state.installedOn))/2);
+ $("sinceCount").textContent=Math.max(0,dayNo(today())-dayNo(BENCHMARK));
  let n=Math.min(Math.ceil(total/5),30),box=$("tallies");box.replaceChildren();
  for(let i=0;i<n;i++){let g=document.createElement("span");g.className="group";for(let j=0;j<4;j++){let m=document.createElement("i");m.className="mark";g.append(m)}let s=document.createElement("i");s.className="slash";g.append(s);box.append(g)}
  if(Math.ceil(total/5)>30){let more=document.createElement("span");more.textContent="+"+(Math.ceil(total/5)-30)+" more groups";box.append(more)}
