@@ -65,9 +65,9 @@ async function init(){
  if(u){$("accountStatus").textContent="Signed in as "+(u.email||"Google account")+" · board "+BOARD;try{await sync();setStatus("Your board is synced.")}catch(e){setStatus("Signed in, but sync failed. Check connection and Firestore rules.")}}
  else $("accountStatus").textContent="Not signed in · this device only"});
  await au.getRedirectResult(auth);
- }catch(e){console.warn(e);$("accountStatus").textContent="Cloud sign-in needs internet and an authorized HTTPS website."}
+ }catch(e){console.warn("Firebase initialization/redirect error:",e);$("accountStatus").textContent="Firebase error: "+(e.code||e.message||"unknown error");}
 }
-$("signin").onclick=async()=>{if(!fb){setStatus("Cloud sign-in is still loading, or internet is unavailable.");return}try{await fb.signInWithRedirect(fb.auth,new fb.GoogleAuthProvider())}catch(e){setStatus("Google sign-in couldn't start. Check Firebase Authorized domains.")}};
+$("signin").onclick=async()=>{if(!fb){setStatus("Cloud sign-in is still loading, or internet is unavailable.");return}try{await fb.signInWithRedirect(fb.auth,new fb.GoogleAuthProvider())}catch(e){console.warn("Google sign-in error:",e);setStatus("Google sign-in error: "+(e.code||e.message||"unknown error"))}};
 $("signout").onclick=async()=>{if(fb)await fb.signOut(fb.auth)};
 render();save();init();
 addEventListener("online",()=>{if(fb&&user)sync().then(()=>setStatus("Your board is synced.")).catch(()=>{})});
