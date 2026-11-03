@@ -58,7 +58,7 @@ async function init(){
  import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js"),
  import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js"),
  import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")]);
- const config={apiKey:"AIzaSyDj8pRJxpTnCzUWfJY5rBiCShx6oQJ9Pg",authDomain:"these-many-days-passed.firebaseapp.com",projectId:"these-many-days-passed",storageBucket:"these-many-days-passed.firebasestorage.app",messagingSenderId:"1010058296560",appId:"1:1010058296560:web:c28068f73902cc74df1635",measurementId:"G-JBFZ44ET0P"};
+ const config={apiKey:"AIzaSyDj8pRJxpTnCzUWfJY5rBiCShx6oQJ9Pg",authDomain:"these-many-days-passed.firebaseapp.com",projectId:"these-many-days-passed",storageBucket:"these-many-days-passed.firebasestorage.app",messagingSenderId:"1010058296560",appId:"1:1010058296560:web:6d78c0429a8131bfdf1635",measurementId:"G-Q3QCBJRM1Q"};
  const app=a.initializeApp(config),auth=au.getAuth(app),firestore=db.getFirestore(app);
  fb={...au,...db,auth,db:firestore};
  au.onAuthStateChanged(auth,async u=>{user=u;$("signin").hidden=!!u;$("signout").hidden=!u;
